@@ -8,6 +8,15 @@ Creates an [AWS Lambda](https://aws.amazon.com/lambda/) function writing to [Ama
 
 ![architecture](docs/architecture.png)
 
+## Throttling Configuration
+
+This stack implements AWS Well-Architected Framework best practice **REL05-BP02: Throttle requests** to protect against resource exhaustion:
+
+- **Rate Limit**: 100 requests per second
+- **Burst Limit**: 200 requests
+
+These limits protect the API from unexpected traffic spikes and ensure consistent performance. If you need higher limits, conduct load testing to validate your infrastructure can handle the increased load before adjusting these values.
+
 ## Setup
 
 The `cdk.json` file tells the CDK Toolkit how to execute your app.
