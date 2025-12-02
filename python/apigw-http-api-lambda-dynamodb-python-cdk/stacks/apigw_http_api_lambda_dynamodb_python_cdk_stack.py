@@ -96,6 +96,7 @@ class ApigwHttpApiLambdaDynamodbPythonCdkStack(Stack):
             ),
             memory_size=1024,
             timeout=Duration.minutes(5),
+            reserved_concurrent_executions=100,
             tracing=lambda_.Tracing.ACTIVE,
             log_retention=logs.RetentionDays.THREE_MONTHS,
         )
