@@ -7,15 +7,47 @@ from aws_xray_sdk.core import patch_all
 patch_all()
 
 import boto3
+from botocore.exceptions import ClientError
 import os
 import json
 import logging
 import uuid
+import time
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 dynamodb_client = boto3.client("dynamodb")
+
+
+def put_item_with_retry(table, item, request_id, max_retries=3):
+    """Put item to DynamoDB with exponential backoff retry logic."""
+    for attempt in range(max_retries):
+        try:
+            dynamodb_client.put_item(TableName=table, Item=item)
+            return True
+        except ClientError as e:
+            error_code = e.response['Error']['Code']
+            if error_code in ['ProvisionedThroughputExceededException', 'ThrottlingException']:
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) * 0.1
+                    logger.warning(json.dumps({
+                        "event": "dynamodb_throttled",
+                        "request_id": request_id,
+                        "attempt": attempt + 1,
+                        "wait_time": wait_time,
+                        "error_code": error_code
+                    }))
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    logger.error(json.dumps({
+                        "event": "dynamodb_throttled_max_retries",
+                        "request_id": request_id,
+                        "error_code": error_code
+                    }))
+            raise
+    return False
 
 
 def handler(event, context):
@@ -44,9 +76,10 @@ def handler(event, context):
             title = str(item["title"])
             id = str(item["id"])
             
-            dynamodb_client.put_item(
-                TableName=table,
-                Item={"year": {"N": year}, "title": {"S": title}, "id": {"S": id}},
+            put_item_with_retry(
+                table,
+                {"year": {"N": year}, "title": {"S": title}, "id": {"S": id}},
+                request_id
             )
             
             logger.info(json.dumps({
@@ -69,13 +102,14 @@ def handler(event, context):
             }))
             
             default_id = str(uuid.uuid4())
-            dynamodb_client.put_item(
-                TableName=table,
-                Item={
+            put_item_with_retry(
+                table,
+                {
                     "year": {"N": "2012"},
                     "title": {"S": "The Amazing Spider-Man 2"},
                     "id": {"S": default_id},
                 },
+                request_id
             )
             
             logger.info(json.dumps({
