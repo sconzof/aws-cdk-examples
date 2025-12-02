@@ -8,14 +8,20 @@ Creates an [AWS Lambda](https://aws.amazon.com/lambda/) function writing to [Ama
 
 ![architecture](docs/architecture.png)
 
-## Throttling Configuration
+## Security and Throttling Configuration
 
-This stack implements AWS Well-Architected Framework best practice **REL05-BP02: Throttle requests** to protect against resource exhaustion:
+This stack implements AWS Well-Architected Framework best practice **REL05-BP02: Throttle requests** with multiple layers of protection:
 
+### API Gateway Throttling
 - **Rate Limit**: 100 requests per second
 - **Burst Limit**: 200 requests
 
-These limits protect the API from unexpected traffic spikes and ensure consistent performance. If you need higher limits, conduct load testing to validate your infrastructure can handle the increased load before adjusting these values.
+### AWS WAF Rate-Based Protection
+- **IP Rate Limit**: 2,000 requests per 5 minutes per IP address
+- **AWS Managed Rules**: Common Rule Set for additional security
+- **CloudWatch Metrics**: Enabled for monitoring blocked requests
+
+These limits protect the API from unexpected traffic spikes, DDoS attacks, and ensure consistent performance. If you need higher limits, conduct load testing to validate your infrastructure can handle the increased load before adjusting these values.
 
 ## Setup
 
