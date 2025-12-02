@@ -96,6 +96,7 @@ class ApigwHttpApiLambdaDynamodbPythonCdkStack(Stack):
             ),
             memory_size=1024,
             timeout=Duration.minutes(5),
+            tracing=lambda_.Tracing.ACTIVE,
             log_retention=logs.RetentionDays.THREE_MONTHS,
         )
 
@@ -116,6 +117,7 @@ class ApigwHttpApiLambdaDynamodbPythonCdkStack(Stack):
             "Endpoint",
             handler=api_hanlder,
             deploy_options=apigw_.StageOptions(
+                tracing_enabled=True,
                 access_log_destination=apigw_.LogGroupLogDestination(api_log_group),
                 access_log_format=apigw_.AccessLogFormat.json_with_standard_fields(
                     caller=True,
