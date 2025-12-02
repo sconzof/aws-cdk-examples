@@ -11,6 +11,7 @@ from aws_cdk import (
     aws_iam as iam,
     aws_logs as logs,
     Duration,
+    CfnOutput,
 )
 from constructs import Construct
 
@@ -112,11 +113,15 @@ class ApigwHttpApiLambdaDynamodbPythonCdkStack(Stack):
             retention=logs.RetentionDays.THREE_MONTHS,
         )
 
-        # Create API Gateway with throttling limits
-        apigw_.LambdaRestApi(
+        # Create API Gateway with throttling limits and API key requirement
+        api = apigw_.LambdaRestApi(
             self,
             "Endpoint",
             handler=api_hanlder,
+            api_key_source_type=apigw_.ApiKeySourceType.HEADER,
+            default_method_options=apigw_.MethodOptions(
+                api_key_required=True
+            ),
             deploy_options=apigw_.StageOptions(
                 throttling_rate_limit=100,
                 throttling_burst_limit=200,
@@ -134,4 +139,42 @@ class ApigwHttpApiLambdaDynamodbPythonCdkStack(Stack):
                     user=True,
                 ),
             ),
+        )
+
+        # Create usage plan with throttling and quota
+        usage_plan = apigw_.UsagePlan(
+            self,
+            "ApiUsagePlan",
+            name="StandardUsagePlan",
+            throttle=apigw_.ThrottleSettings(
+                rate_limit=50,
+                burst_limit=100
+            ),
+            quota=apigw_.QuotaSettings(
+                limit=10000,
+                period=apigw_.Period.DAY
+            )
+        )
+
+        # Associate usage plan with API stage
+        usage_plan.add_api_stage(
+            stage=api.deployment_stage
+        )
+
+        # Create API key
+        api_key = apigw_.ApiKey(
+            self,
+            "ApiKey",
+            api_key_name="DefaultApiKey"
+        )
+
+        # Associate API key with usage plan
+        usage_plan.add_api_key(api_key)
+
+        # Output API key ID for reference
+        CfnOutput(
+            self,
+            "ApiKeyId",
+            value=api_key.key_id,
+            description="API Key ID - retrieve value from AWS Console or CLI"
         )
