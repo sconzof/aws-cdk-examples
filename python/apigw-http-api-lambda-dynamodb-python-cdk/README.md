@@ -8,14 +8,21 @@ Creates an [AWS Lambda](https://aws.amazon.com/lambda/) function writing to [Ama
 
 ![architecture](docs/architecture.png)
 
-## Throttling Configuration
+## Throttling and Usage Configuration
 
-This stack implements AWS Well-Architected Framework best practice **REL05-BP02: Throttle requests** to protect against resource exhaustion:
+This stack implements AWS Well-Architected Framework best practice **REL05-BP02: Throttle requests** with multiple layers of protection:
 
+### Stage-Level Throttling
 - **Rate Limit**: 100 requests per second
 - **Burst Limit**: 200 requests
 
-These limits protect the API from unexpected traffic spikes and ensure consistent performance. If you need higher limits, conduct load testing to validate your infrastructure can handle the increased load before adjusting these values.
+### Per-Client Usage Plans
+- **Rate Limit**: 50 requests per second per API key
+- **Burst Limit**: 100 requests per API key
+- **Daily Quota**: 10,000 requests per day per API key
+
+### API Key Authentication
+All API requests require a valid API key in the `x-api-key` header. This enables per-client rate limiting and usage tracking.
 
 ## Setup
 
@@ -79,16 +86,27 @@ $ cdk deploy --profile test
 ```
 
 ## After Deploy
-Navigate to AWS API Gateway console and test the API with below sample data 
-```json
-{
-    "year":"2023", 
-    "title":"kkkg",
-    "id":"12"
-}
+
+### Retrieve API Key
+After deployment, retrieve the API key value:
+
+```bash
+aws apigateway get-api-key --api-key <API_KEY_ID> --include-value --query 'value' --output text
 ```
 
-You should get below response 
+The API Key ID is output by the stack deployment.
+
+### Test the API
+Test the API with the required `x-api-key` header:
+
+```bash
+curl -X POST https://<api-id>.execute-api.<region>.amazonaws.com/prod/ \
+  -H "x-api-key: <your-api-key>" \
+  -H "Content-Type: application/json" \
+  -d '{"year":"2023","title":"kkkg","id":"12"}'
+```
+
+You should get below response:
 
 ```json
 {"message": "Successfully inserted data!"}
